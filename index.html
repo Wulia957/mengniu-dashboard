@@ -1107,7 +1107,12 @@ function renderOrderCalendar(){
     // ★ v6.7: order_interval===0（每日订货）强制显示🔴订货日
     var isDailyOrder = r.order_interval===0;
     if(r.is_order_day || isDailyOrder){
-      html+='<td style="text-align:center;color:var(--red);font-weight:600">🔴订货日</td>';
+      // ★ 未维护订货日历的标识
+      if(!r.in_calendar){
+        html+='<td style="text-align:center;color:var(--orange);font-weight:600">⚠️未维护</td>';
+      } else {
+        html+='<td style="text-align:center;color:var(--red);font-weight:600">🔴订货日</td>';
+      }
       if(r.today_order_boxes>0){
         html+='<td style="text-align:center;color:var(--green);font-weight:600">'+Number(r.today_order_boxes).toLocaleString('zh-CN',{maximumFractionDigits:0})+'</td>';
       } else {
