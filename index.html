@@ -394,7 +394,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 <!-- ============ Tab2: 库存分析 (v5.9 合并原Tab2+Tab3) ============ -->
 <div class="tab-content" id="tab-tracking">
   <!-- 2-B: 城市库存矩阵热力图 -->
-  <div class="sec"><div class="sec-title"><span class="dot accent"></span>城市库存矩阵 <span class="sub">格子=库存消化天数 &middot; 悬浮看详情 &middot; 排除零销SKU</span></div>
+  <div class="sec"><div class="sec-title"><span class="dot accent"></span>城市库存矩阵 <span class="sub">格子=库存消化天数 &middot; 悬浮看详情 &middot; 排除零销且零库存SKU</span></div>
     <div class="cc">
       <div class="filter-bar">
         <div class="fl">
@@ -1191,8 +1191,8 @@ function renderHeatmap(){
   var cvProd=getMSVal('ms_hm_prod');
   var rows=applyGlobalCityFilter(cpd);
   if(cvProd!=='all') rows=rows.filter(function(r){return cvProd.indexOf(r.product)>=0;});
-  // ★ v5.9: 过滤昨销=0且7日销=0且无在途的SKU (新品有在途订单也展示)
-  rows=rows.filter(function(r){return (r.yesterday_volume||0)>0||(r.daily_avg_7d||0)>0||(r.total_transit_pcs||0)>0;});
+  // ★ v5.9: 过滤昨销=0且7日销=0且无在途的SKU (保留有库存且库存金额>0的品, 新品有在途订单也展示)
+  rows=rows.filter(function(r){return (r.yesterday_volume||0)>0||(r.daily_avg_7d||0)>0||(r.total_transit_pcs||0)>0||((r.total_stock||0)>0&&(r.inventory_value||0)>0);});
 
   // Build matrix
   var products=[], prodSet={}, prodSku={}, cities=[], citySet={};
