@@ -341,6 +341,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
       <div class="cw" style="height:340px"><canvas id="cTrend"></canvas></div>
     </div>
   </div>
+  <!-- ★ v7.1: 单品表现 -->
+  <div class="sec"><div class="sec-title"><span class="dot primary"></span>单品表现 <span class="sub">所有经营单品 &middot; 点击表头排序 &middot; 悬浮看趋势</span></div>
+    <div class="cc">
+      <div class="filter-bar">
+        <div class="fl">
+          <div class="ms-wrap" id="ms_pp_prod"><button class="ms-btn" onclick="toggleMS('ms_pp_prod')"><span class="ms-label">全部商品</span><span class="ms-arrow">▼</span></button><div class="ms-drop" id="ms_pp_prod_drop"></div></div>
+          <span style="font-size:10px;color:var(--muted);margin-left:8px">今日订单城市列数:</span>
+          <select id="ppCityLimit" onchange="renderProductPerf()" style="padding:3px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:3px;font-size:10px">
+            <option value="3">3城</option><option value="5" selected>5城</option><option value="8">8城</option><option value="99">全部</option>
+          </select>
+        </div>
+        <div class="fr">
+          <button class="export-btn" onclick="exportCSV('productPerfTable','单品表现')" title="导出CSV">📥 导出</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="productPerfTable" style="overflow-x:auto;max-height:520px;overflow-y:auto"></div>
+    </div>
+  </div>
   <div class="sec"><div class="sec-title"><span class="dot primary"></span>单品趋势</div>
     <div class="cc">
       <div class="ch"><h3>单品每日趋势</h3>
@@ -417,6 +435,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
     <div class="cc">
       <div class="filter-bar">
         <div class="fl">
+          <div class="ms-wrap" id="ms_oc_city"><button class="ms-btn" onclick="toggleMS('ms_oc_city')"><span class="ms-label">全部城市</span><span class="ms-arrow">▼</span></button><div class="ms-drop" id="ms_oc_city_drop"></div></div>
           <div class="ms-wrap" id="ms_oc_prod"><button class="ms-btn" onclick="toggleMS('ms_oc_prod')"><span class="ms-label">全部商品</span><span class="ms-arrow">▼</span></button><div class="ms-drop" id="ms_oc_prod_drop"></div></div>
           <div class="ms-wrap" id="ms_oc_miss"><button class="ms-btn" onclick="toggleMS('ms_oc_miss')"><span class="ms-label">全部订货状态</span><span class="ms-arrow">▼</span></button><div class="ms-drop" id="ms_oc_miss_drop"></div></div>
           <div class="ms-wrap" id="ms_oc_status"><button class="ms-btn" onclick="toggleMS('ms_oc_status')"><span class="ms-label">全部库存状态</span><span class="ms-arrow">▼</span></button><div class="ms-drop" id="ms_oc_status_drop"></div></div>
@@ -1070,8 +1089,9 @@ function sortTable(tableId,colIdx,parser){
 function renderOrderCalendar(){
   var oc=data.order_calendar||[];
   var n7=data.next7_dates||[];
-  var cvProd=getMSVal('ms_oc_prod'); var cvMiss=getMSVal('ms_oc_miss'); var cvStatus=getMSVal('ms_oc_status');
+  var cvCity=getMSVal('ms_oc_city'); var cvProd=getMSVal('ms_oc_prod'); var cvMiss=getMSVal('ms_oc_miss'); var cvStatus=getMSVal('ms_oc_status');
   oc=applyGlobalCityFilter(oc);
+  if(cvCity!=='all') oc=oc.filter(function(r){return cvCity.indexOf(r.city)>=0;});
   if(cvProd!=='all') oc=oc.filter(function(r){return cvProd.indexOf(r.product)>=0;});
   if(cvMiss!=='all'){
     oc=oc.filter(function(r){
@@ -1089,7 +1109,7 @@ function renderOrderCalendar(){
   oc.sort(function(a,b){return (b.today_order_value||0)-(a.today_order_value||0);});
   
   var html='<table class="data-table" style="font-size:11px"><thead><tr>';
-  html+='<th>城市</th><th>skuid</th><th>商品</th><th>状态</th><th style="text-align:center">今日订货日</th><th style="text-align:center">今日下单</th><th style="text-align:center;color:var(--green)">今日金额</th><th style="text-align:center">昨销</th><th style="text-align:center">前置/大仓</th>';
+  html+='<th>城市</th><th>skuid</th><th>商品</th><th>状态</th><th style="text-align:center">上个订货日</th><th style="text-align:center">今日订货日</th><th style="text-align:center">今日下单</th><th style="text-align:center;color:var(--green)">今日金额</th><th style="text-align:center">昨销</th><th style="text-align:center">前置/大仓</th>';
   n7.forEach(function(d){html+='<th style="text-align:center">'+d.slice(5)+'</th>';});
   html+='</tr></thead><tbody>';
   
@@ -1102,6 +1122,9 @@ function renderOrderCalendar(){
     var st=r.is_sufficient||'';
     var stClr=st==='断货'?'var(--red)':st==='紧缺'?'var(--orange)':'var(--green)';
     html+='<td style="color:'+stClr+';font-weight:600">'+st+'</td>';
+    // ★ v7.1: 上个订货日日期
+    var lastOd=r.last_order_date||'';
+    html+='<td style="text-align:center;white-space:nowrap">'+(lastOd?lastOd.slice(5):'—')+'</td>';
     var todayVal=r.today_order_value||0;
     var todayValStr=todayVal>0?todayVal.toFixed(2)+'万':'—';
     // ★ v6.7: order_interval===0（每日订货）强制显示🔴订货日
@@ -1348,6 +1371,103 @@ function switchProdRank(mode,btn){
   btn.classList.add('active'); renderProdRank();
 }
 
+// ★ v7.1: 单品表现表格
+var ppSortCol='yesterday_vol', ppSortDir='desc';
+function renderProductPerf(){
+  var pp=data.product_performance||[];
+  var cvProd=getMSVal('ms_pp_prod');
+  pp=applyGlobalCityFilter(pp);
+  if(cvProd!=='all') pp=pp.filter(function(r){return cvProd.indexOf(r.product)>=0;});
+
+  // 收集今日有订单的城市 (所有单品汇总), 按金额降序
+  var cityOrderTotal={};
+  pp.forEach(function(r){(r.city_orders||[]).forEach(function(co){
+    cityOrderTotal[co.city]=(cityOrderTotal[co.city]||0)+co.amount;
+  });});
+  var allOrderCities=Object.keys(cityOrderTotal).sort(function(a,b){return cityOrderTotal[b]-cityOrderTotal[a];});
+  var cityLimit=parseInt(document.getElementById('ppCityLimit').value||5);
+  var showCities=allOrderCities.slice(0,cityLimit===99?allOrderCities.length:cityLimit);
+  // 构建城市→索引映射
+  var cityIdx={}; showCities.forEach(function(c,i){cityIdx[c]=i;});
+
+  // 排序
+  pp.sort(function(a,b){
+    var va=a[ppSortCol]||0, vb=b[ppSortCol]||0;
+    if(ppSortCol==='product'){va=a.product;vb=b.product;return ppSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);}
+    return ppSortDir==='asc'?va-vb:vb-va;
+  });
+
+  var html='<table class="data-table" style="font-size:11px"><thead><tr>';
+  html+=th('商品','product')+th('SKUID','sku_id');
+  html+=th('昨日销量','yesterday_vol')+'<th style="text-align:center;font-size:10px;color:var(--muted)">日环比</th><th style="text-align:center;font-size:10px;color:var(--muted)">周同比</th>';
+  html+=th('近7日','last7d_vol')+th('7日环比','last7d_pop');
+  html+=th('近30日','last30d_vol')+th('30日环比','last30d_pop');
+  html+=th('今日件数','today_pcs')+th('今日吨数','today_tons')+th('今日金额','today_amount');
+  showCities.forEach(function(c){
+    html+='<th style="text-align:center;font-size:10px">'+c+'<br><span style="color:var(--muted);font-weight:400">件/金额</span></th>';
+  });
+  if(allOrderCities.length>showCities.length) html+='<th style="text-align:center;color:var(--muted);font-size:10px">+'+(allOrderCities.length-showCities.length)+'城</th>';
+  html+='</tr></thead><tbody>';
+
+  pp.forEach(function(r){
+    html+='<tr>';
+    html+='<td style="white-space:nowrap;font-weight:600">'+r.product+'</td>';
+    html+='<td>'+(r.sku_id||'').toString().replace(/\.0$/,'')+'</td>';
+    html+=tdNum(r.yesterday_vol,0);
+    html+=tdPct(r.yesterday_dod);
+    html+=tdPct(r.yesterday_wow);
+    html+=tdNum(r.last7d_vol,0);
+    html+=tdPct(r.last7d_pop);
+    html+=tdNum(r.last30d_vol,0);
+    html+=tdPct(r.last30d_pop);
+    html+=tdNum(r.today_pcs,0,(r.today_pcs>0?'color:var(--green);font-weight:600':''));
+    html+=tdNum(r.today_tons,1,(r.today_tons>0?'color:var(--accent)':''));
+    html+=tdNum(r.today_amount,2,(r.today_amount>0?'color:var(--green);font-weight:600':''));
+
+    // 城市列
+    var coMap={}; (r.city_orders||[]).forEach(function(co){coMap[co.city]=co;});
+    showCities.forEach(function(c){
+      var co=coMap[c];
+      if(co){
+        html+='<td style="text-align:center;font-size:10px"><span style="font-weight:600">'+fmt(co.pcs)+'</span><br><span style="color:var(--green)">¥'+(co.amount||0).toFixed(1)+'万</span></td>';
+      } else {
+        html+='<td style="text-align:center;color:var(--muted)">—</td>';
+      }
+    });
+    if(allOrderCities.length>showCities.length){
+      var restCnt=0,restVal=0; (r.city_orders||[]).forEach(function(co){
+        if(cityIdx[co.city]===undefined){restCnt+=co.pcs;restVal+=co.amount;}
+      });
+      html+='<td style="text-align:center;font-size:10px;color:var(--muted)">'+(restCnt>0?'<span style="font-weight:600">'+fmt(restCnt)+'</span><br>¥'+restVal.toFixed(1)+'万':'—')+'</td>';
+    }
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  if(pp.length===0) html='<div style="padding:20px;text-align:center;color:var(--muted)">无匹配数据</div>';
+  document.getElementById('productPerfTable').innerHTML=html;
+
+  function th(label,col){
+    var arrow=''; if(ppSortCol===col) arrow=ppSortDir==='desc'?' ▾':' ▴';
+    return '<th style="cursor:pointer;white-space:nowrap" onclick="ppSort(\''+col+'\')">'+label+arrow+'</th>';
+  }
+  function tdNum(v,dec,extraStyle){
+    extraStyle=extraStyle||'';
+    var txt=v>0?(dec>0?Number(v).toFixed(dec):Number(v).toLocaleString('zh-CN',{maximumFractionDigits:0})):'—';
+    return '<td style="text-align:center;white-space:nowrap;'+extraStyle+'">'+txt+'</td>';
+  }
+  function tdPct(v){
+    if(v==null) return '<td style="text-align:center;color:var(--muted)">—</td>';
+    var absVal=Math.abs(v).toFixed(1);
+    if(v>0.05) return '<td style="text-align:center;color:var(--green);font-weight:600">▲'+absVal+'%</td>';
+    if(v<-0.05) return '<td style="text-align:center;color:var(--red);font-weight:600">▼'+absVal+'%</td>';
+    return '<td style="text-align:center;color:var(--muted)">→0%</td>';
+  }
+}
+function ppSort(col){
+  if(ppSortCol===col) ppSortDir=ppSortDir==='desc'?'asc':'desc'; else {ppSortCol=col;ppSortDir='desc';}
+  renderProductPerf();
+}
+
 function renderKPI(){
   var k=data.kpi, m=data.meta;
   var daysInMonth=new Date(parseInt(m.latest_date.slice(0,4)),parseInt(m.latest_date.slice(5,7)),0).getDate();
@@ -1590,7 +1710,7 @@ function initGlobalFilters(){
 function onGlobalFilterChange(){
   globalFilter.region = getMSVal('ms_global_region');
   globalFilter.city = getMSVal('ms_global_city');
-  renderKPI(); renderTrend(); renderProdRank(); renderDonut(); renderCityRank(); renderProdTrend();
+  renderKPI(); renderTrend(); renderProductPerf(); renderProdRank(); renderDonut(); renderCityRank(); renderProdTrend();
   renderHeatmap(); renderOrderCalendar();
   renderYesterdayReceipt(); renderFulfillment();
 }
@@ -1726,10 +1846,14 @@ function initAllMS(){
   (data.city_product_detail||[]).forEach(function(r){prodRev[r.product]=(prodRev[r.product]||0)+(r.revenue||0);});
   var cpProdsSorted=Object.keys(prodRev).filter(function(p){return (prodRev[p]||0)>0;}).sort(function(a,b){return prodRev[b]-prodRev[a];});
 
+  // Tab1: 单品表现 — product filter
+  initMS('ms_pp_prod', '全部商品', cpProdsSorted, renderProductPerf);
+
   // Tab2: Heatmap — product filter only
   initMS('ms_hm_prod', '全部商品', cpProdsSorted, renderHeatmap);
 
-  // Tab2-C: Order Calendar — product + status filters only
+  // Tab2-C: Order Calendar — city + product + status filters
+  initMS('ms_oc_city', '全部城市', cpCitiesSorted, renderOrderCalendar);
   initMS('ms_oc_prod', '全部商品', cpProdsSorted, renderOrderCalendar);
   initMS('ms_oc_miss', '全部订货状态', ['遗漏','已下单','非订货日'], renderOrderCalendar);
   initMS('ms_oc_status', '全部库存状态', ['断货','紧缺','足量','积压'], renderOrderCalendar);
@@ -1788,7 +1912,7 @@ function loadData(){
 
 function renderAll(){
   renderKPI();
-  renderTrend(); populateProdFilter(); renderProdRank(); renderDonut(); renderCityRank(); renderProdTrend();
+  renderTrend(); populateProdFilter(); renderProductPerf(); renderProdRank(); renderDonut(); renderCityRank(); renderProdTrend();
   renderHeatmap(); renderOrderCalendar();
   renderYesterdayReceipt();
   populateFulfillDateFilter();
