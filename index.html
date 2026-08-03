@@ -1127,6 +1127,21 @@ function renderOrderCalendar(){
     html+='<td style="text-align:center;white-space:nowrap">'+(lastOd?lastOd.slice(5):'—')+'</td>';
     var todayVal=r.today_order_value||0;
     var todayValStr=todayVal>0?todayVal.toFixed(2)+'万':'—';
+    // ★ v7.2: 固定日(月)模式 — 固定日期显示
+    var fixedDays=r.fixed_days;
+    var isFixedMode=fixedDays&&Array.isArray(fixedDays)&&fixedDays.length>0;
+    if(isFixedMode){
+      if(r.is_order_day){
+        html+='<td style="text-align:center;color:var(--accent);font-weight:600" title="每月'+fixedDays.join('/')+'号">📅订货日</td>';
+      } else {
+        html+='<td style="text-align:center;color:var(--muted)" title="每月'+fixedDays.join('/')+'号">—</td>';
+      }
+      if(r.today_order_boxes>0){
+        html+='<td style="text-align:center;color:var(--green);font-weight:600">'+Number(r.today_order_boxes).toLocaleString('zh-CN',{maximumFractionDigits:0})+'</td>';
+      } else {
+        html+='<td style="text-align:center;color:var(--red);font-weight:600">⚡遗漏</td>';
+      }
+    } else {
     // ★ v6.7: order_interval===0（每日订货）强制显示🔴订货日
     var isDailyOrder = r.order_interval===0;
     if(r.is_order_day || isDailyOrder){
@@ -1148,6 +1163,7 @@ function renderOrderCalendar(){
       } else {
         html+='<td style="text-align:center;color:var(--muted)">—</td>';
       }
+    }
     }
     html+='<td style="text-align:center;color:var(--green);font-weight:600">'+todayValStr+'</td>';
     // ★ v6.7: 昨销 + 环比箭头 + 悬停显示上周同日/7日均
@@ -2017,18 +2033,35 @@ function renderFulfillment(){
       arr.forEach(function(item){
         var key=item.sku_id+'|||'+item.product;
         if(!merged[key]){
-          merged[key]={sku_id:item.sku_id,product:item.product,boxes:0,tons:0,delivery_qty:0,order_nos:[],hasDiff:false};
+          merged[key]={sku_id:item.sku_id,product:item.product,boxes:0,tons:0,delivery_qty:0,order_nos:[],hasDiff:false,
+	            order_details_map:{}, matched_delivery_notes:[]};
         }
         merged[key].boxes+=item.boxes||0;
         merged[key].tons+=(item.tons||0);
         merged[key].delivery_qty+=(item.delivery_qty||0);
         if(item.diff!=null&&item.diff!==0) merged[key].hasDiff=true;
         (item.order_nos||[]).forEach(function(on){if(merged[key].order_nos.indexOf(on)<0) merged[key].order_nos.push(on);});
+        // ★ v6.x fix: 合并order_details (按采购单号聚合箱数)
+        (item.order_details||[]).forEach(function(od){
+          if(!merged[key].order_details_map[od.order_no]){
+            merged[key].order_details_map[od.order_no]={order_no:od.order_no,boxes:0};
+          }
+          merged[key].order_details_map[od.order_no].boxes+=od.boxes||0;
+        });
+        // ★ v6.x fix: 合并matched_delivery_notes
+        (item.matched_delivery_notes||[]).forEach(function(dn){
+          if(merged[key].matched_delivery_notes.indexOf(dn)<0) merged[key].matched_delivery_notes.push(dn);
+        });
       });
     });
     var result=[];
     for(var k in merged){
       var m=merged[k];
+      // ★ v6.x fix: order_details_map转为数组供purchaseRows使用
+      m.order_details=[];
+      for(var ono in m.order_details_map){
+        m.order_details.push(m.order_details_map[ono]);
+      }
       m.diff=m.hasDiff?m.boxes-m.delivery_qty:null;
       result.push(m);
     }
@@ -2164,7 +2197,7 @@ function renderFulfillment(){
     var hdrPBoxes = firstDate.p_boxes || 0;
     var hdrDBoxes = firstDate.d_boxes || 0;
     var hdrTons = (firstDate.d_tons || 0);
-    (firstDate.purchase||[]).forEach(function(t){ hdrTons += t.tons||0; });
+    // ★ v6.x fix: header只显示交货吨数, 不加入采购吨数(采购吨是计划值, 不是实际计重)
     var match1 = (hdrPBoxes === hdrDBoxes) ? 'var(--green)' : 'var(--red)';
 
     var secondDate = allFutureDates[1] || null;
@@ -2173,7 +2206,7 @@ function renderFulfillment(){
       hdr2PBoxes = secondDate.p_boxes || 0;
       hdr2DBoxes = secondDate.d_boxes || 0;
       hdr2Tons = (secondDate.d_tons || 0);
-      (secondDate.purchase||[]).forEach(function(t){ hdr2Tons += t.tons||0; });
+      // ★ v6.x fix: header只显示交货吨数
       match2 = (hdr2PBoxes === hdr2DBoxes) ? 'var(--green)' : 'var(--red)';
     }
 
