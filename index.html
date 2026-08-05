@@ -1394,6 +1394,8 @@ function renderProductPerf(){
   var cvProd=getMSVal('ms_pp_prod');
   pp=applyGlobalCityFilter(pp);
   if(cvProd!=='all') pp=pp.filter(function(r){return cvProd.indexOf(r.product)>=0;});
+  // 隐藏近7日无销售的单品
+  pp=pp.filter(function(r){return (r.last7d_vol||0)>0;});
 
   // 收集今日有订单的城市 (所有单品汇总), 按金额降序
   var cityOrderTotal={};
