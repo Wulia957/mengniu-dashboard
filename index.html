@@ -1859,6 +1859,8 @@ function initAllMS(){
     cityRev[c]=sum;
   });
   var cpCitiesSorted=Object.keys(cityRev).sort(function(a,b){return cityRev[b]-cityRev[a];});
+  // ★ v7.4: 补充在途看板中有数据但 city_trend 中缺失的城市 (纯在途/无销售历史的城市)
+  (data.order_calendar||[]).forEach(function(r){if(!(r.city in cityRev)){cityRev[r.city]=0;cpCitiesSorted.push(r.city);}});
   // Sort products by revenue desc
   var prodRev={};
   (data.city_product_detail||[]).forEach(function(r){prodRev[r.product]=(prodRev[r.product]||0)+(r.revenue||0);});
